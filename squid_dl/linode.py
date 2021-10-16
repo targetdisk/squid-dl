@@ -65,7 +65,7 @@ class LinodeProxy:
         create_cmd = (
             "linode-cli --json linodes create "
             + "--image linode/arch "
-            + '--authorized_keys '
+            + "--authorized_keys "
             + '"'
             + self.pubkey
             + '"'
