@@ -149,3 +149,15 @@ If you encounter any issues running `squid-dl`, please create an issue
 [on GitHub](https://github.com/targetdisk/squid-dl/issues/new/choose).
 
 This software has only tested on Linux so far (patches welcome).
+
+## Contributing
+Submit your patches as GitHub
+[pull requests](https://github.com/targetdisk/squid-dl/pulls).
+
+### Contact
+Feel free to holler at me on `#squid-dl` on
+[Libera.chat](https://libera.chat/).
+
+### Style notes
+I am an 80 column stickler.  I run all Python code in this repository through
+`black -l 80`.
