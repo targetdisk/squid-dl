@@ -1,7 +1,7 @@
-<center>
-  ![squid-dl logo](./img/squid-dl.no-outline.web.svg)
+<p align="center">
+  <img alt="squid-dl logo" src="./img/squid-dl.no-outline.web.svg">
   <h1 align="center">squid-dl</h1>
-</center>
+</p>
 
 <p align="center">
   <a href="https://github.com/psf/black">
