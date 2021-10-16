@@ -39,4 +39,3 @@ def runcmd(args):
     except KeyboardInterrupt:
         proc.terminate()
         return b""
-
