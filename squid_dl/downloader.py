@@ -87,10 +87,10 @@ def do_download(
             except Empty:
                 break
 
-            if entry["id"] is None:
-                continue
-            else:
+            try:
                 id_dir = entry["id"]
+            except TypeError:
+                continue
 
             try:
                 os.mkdir(id_dir)
@@ -194,10 +194,10 @@ def check_dl(in_q: Queue, out_q: Queue):
             except Empty:
                 break
 
-            if entry["id"] is None:
-                continue
-            else:
+            try:
                 id_dir = entry["id"]
+            except TypeError:
+                continue
 
             if os.path.isdir(id_dir):
                 try:
