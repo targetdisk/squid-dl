@@ -42,6 +42,8 @@ from yt_dlp.utils import encodeFilename, sanitize_path
 from yt_dlp.extractor.common import InfoExtractor as IE
 
 from .linode import LinodeProxy
+from .proxy import Proxy
+from .socks import SocksProxy
 from .util import die, eprint, runcmd
 
 
@@ -49,7 +51,7 @@ def do_download(
     entry_q: Queue,
     opts: argparse.Namespace,
     sub_langs: [str],
-    proxy: LinodeProxy = None,
+    proxy: Proxy = None,
 ):
 
     sub_opts = {
@@ -330,7 +332,7 @@ def resume_preprocess(entries: [dict]) -> list:
     return unfinished_entries
 
 
-def validate_proxy(proxy: LinodeProxy) -> LinodeProxy:
+def validate_linode_proxy(proxy: LinodeProxy) -> LinodeProxy:
     if not proxy.start():
         eprint(
             "[WARN]: "
@@ -339,7 +341,7 @@ def validate_proxy(proxy: LinodeProxy) -> LinodeProxy:
         port = proxy.proxy_port
         proxy.cleanup()
         proxy = LinodeProxy(proxy_port=port)
-        return validate_proxy(proxy)
+        return validate_linode_proxy(proxy)
     else:
         print(
             "[INFO]: SOCKS validation succeeded on port {} from ID {}".format(
@@ -349,7 +351,7 @@ def validate_proxy(proxy: LinodeProxy) -> LinodeProxy:
         return proxy
 
 
-def cleanup(workers: [Process], proxies: [LinodeProxy]) -> None:
+def cleanup(workers: [Process], linode_proxies: [LinodeProxy]) -> None:
     if len(workers) > 0:
         for worker in workers:
             if worker.is_alive():
@@ -360,16 +362,16 @@ def cleanup(workers: [Process], proxies: [LinodeProxy]) -> None:
                 )
                 worker.terminate()
 
-    if len(proxies) > 0:
+    if len(linode_proxies) > 0:
         print("[CLEANUP]: Deleting Linode proxies...")
-        for proxy in proxies:
+        for proxy in linode_proxies:
             proxy.cleanup()
 
 
 def parse_args(args: list, name: str):
     parser = argparse.ArgumentParser(prog=name)
 
-    group = parser.add_argument_group("Proxy settings")
+    group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument(
         "-L",
         "--linode-proxy",
@@ -380,12 +382,26 @@ def parse_args(args: list, name: str):
         + "for more information.",
     )
     group.add_argument(
+        "-S",
+        "--socks-proxy",
+        type=str,
+        default=None,
+        help="Run workers through a SOCKS proxy.  Requires a fully-qualified "
+        + 'proxy URL (e.g. "socks5://user:pass@hostname:port" or '
+        + '"socks5://hostname:port").\n'
+        + "Be mindful of your shell's history file when entering passwords on "
+        + "the command line.  If this script encounters a proxy that requires "
+        + "authentication, it will prompt the user for a password "
+        + "interactively, as well.",
+    )
+    parser.add_argument(
         "-p",
         "--proxy-base-port",
         type=int,
         default=1337,
-        help="Port number proxy ports are derived from, does nothing without "
-        "enabling a type of proxy (like --linode-proxy).",
+        help="Port number that local Linode-powered proxy ports are derived "
+        + "from, does nothing without "
+        + "enabling --linode-proxy (aka. -L).",
     )
     parser.add_argument(
         "--resume-dump",
@@ -446,9 +462,7 @@ def main(args: [str], name: str) -> int:
     print('[INFO]: saving videos to "{}" directory'.format(dirname))
     if not (os.path.exists(dirname) and os.path.isdir(dirname)):
         os.mkdir(dirname)
-        os.chdir(dirname)
     else:
-        os.chdir(dirname)
         playlist_size = len(info_dict["entries"])
 
         info_dict["entries"] = resume_preprocess(info_dict["entries"])
@@ -462,7 +476,7 @@ def main(args: [str], name: str) -> int:
             )
         )
         if opts.resume_dump:
-            rdump = open("resume.json", mode="w")
+            rdump = open(info_dict["title"] + ".resume.json", mode="w")
             rdump.write(j.dumps(info_dict, sort_keys=True, indent=2))
             rdump.close()
 
@@ -476,16 +490,20 @@ def main(args: [str], name: str) -> int:
 
     base_port = 1337
     workers = []
-    proxies = []
+    linode_proxies = []
+    if opts.socks_proxy is not None:
+        socks_proxy = SocksProxy(url=opts.socks_proxy)
     try:
         for n in range(n_workers):
             port = base_port + n
 
             if opts.linode_proxy:
-                proxies.append(
+                linode_proxies.append(
                     LinodeProxy(proxy_port=port, pubkey_path=pubkey_path)
                 )
-                worker_args = (entry_q, opts, sub_langs, proxies[n])
+                worker_args = (entry_q, opts, sub_langs, linode_proxies[n])
+            elif opts.socks_proxy is not None:
+                worker_args = (entry_q, opts, sub_langs, socks_proxy)
             else:
                 worker_args = (entry_q, opts, sub_langs)
 
@@ -496,7 +514,7 @@ def main(args: [str], name: str) -> int:
                 )
             )
 
-        if len(proxies) > 0:
+        if len(linode_proxies) > 0:
             if not (
                 os.path.isfile(pubkey_path)
                 or os.path.isfile(os.path.splitext(pubkey_path)[0])
@@ -512,7 +530,7 @@ def main(args: [str], name: str) -> int:
                 print(".", end="")
                 temp_list = []
                 for proxy_idx in nodes_to_ping:
-                    if proxies[proxy_idx].get_status() != "running":
+                    if linode_proxies[proxy_idx].get_status() != "running":
                         temp_list.append(proxy_idx)
                     sleep(0.2)
                 nodes_to_ping = temp_list
@@ -521,9 +539,11 @@ def main(args: [str], name: str) -> int:
         while not entry_q.full():
             sleep(0.2)
 
+        os.chdir(dirname)
+
         for i in range(n_workers):
-            if len(proxies) > 0:
-                proxies[i] = validate_proxy(proxies[i])
+            if len(linode_proxies) > 0:
+                linode_proxies[i] = validate_linode_proxy(linode_proxies[i])
                 seconds = randint(0, 1)
             else:
                 seconds = randint(1, 6)
@@ -535,7 +555,7 @@ def main(args: [str], name: str) -> int:
 
     except KeyboardInterrupt:
         eprint("\n[CLEANUP]: Interrupted, cleaning up...")
-        cleanup(workers, proxies)
+        cleanup(workers, linode_proxies)
         if entry_getter.is_alive():
             print(
                 "[CLEANUP]: Terminating queue worker {}".format(
@@ -546,6 +566,6 @@ def main(args: [str], name: str) -> int:
         return 1
 
     print("[INFO]: All done!")
-    cleanup(workers, proxies)
+    cleanup(workers, linode_proxies)
 
     return 0

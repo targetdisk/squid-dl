@@ -13,7 +13,8 @@
 </p>
 
 `squid-dl` is a massively parallel
-[yt-dlp](https://github.com/yt-dlp/yt-dlp)-based YouTube downloader.
+[yt-dlp](https://github.com/yt-dlp/yt-dlp)-based YouTube downloader useful for
+downloading large video playlists a fast internet connection.
 
 ## Installation
 Run the `setup.py`, which will install `squid-dl` and its two dependencies:
@@ -22,7 +23,7 @@ Run the `setup.py`, which will install `squid-dl` and its two dependencies:
 $ python3 setup.py install
 ```
 
-### Linode Setup
+### Linode Proxy Setup
 If you want to use the Linode SOCKS proxy feature, be sure to configure the
 `linode-cli` first:
 ```
@@ -87,7 +88,43 @@ playlist example, we'll spawn 12 workers:
 
 For more information see the built-in help by running `squid-dl -h`.
 
-## Linode Proxying
+### SOCKS Proxying
+For those with access to a dedicated SOCKS proxy already, you can use
+`squid-dl`'s `-S` and a fully-qualified SOCKS4, SOCKS4A, or SOCKS5 proxy URL
+to download your playlists through a proxy!  Here's an example using NordVPN's
+SOCKS5 proxy:
+```
+(.venv) $ squid-dl -S socks5://us.socks.nordhold.net:1080 -n 12 Mems.json
+
+[INFO]: Starting squid-dl...
+[INFO]: saving videos to "Mems" directory
+SOCKS username: 0asFVrZt0bw1ucPvQRKiUe87
+SOCKS password:
+
+...
+[download] Download completed
+[INFO]: Worker 1667326 done...
+[INFO]: Worker 1667396 done...
+[INFO]: Worker 1667484 done...
+[download] Download completed
+[download] Download completed
+[INFO]: Worker 1667352 done...
+[INFO]: Worker 1667421 done...
+[INFO]: All done!
+```
+
+You can also add a username and password to SOCKS5 and SOCKS4A proxy URLs in a
+format like this:
+```
+socks5://username:password@hostname:port
+```
+
+**SECURITY NOTE:** typing in usernames and passwords this way is considered
+insecure, as they will likely end up in your shell's history file completely
+unprotected and in the clear (☹).  It is generally recommended to input the
+username and password interactively unless you are scripting `squid-dl`.
+
+### Linode Proxying
 With the `-L` option, you can run each worker through its own Linode-powered
 SSH-tunneled SOCKSv5 proxy!  `squid-dl` will make an temporary SSH key in
 the current working directory and then get to work spinning up Linodes and
