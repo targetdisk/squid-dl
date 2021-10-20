@@ -25,10 +25,11 @@ import subprocess
 from time import sleep
 import typing
 
+from .proxy import Proxy
 from .util import eprint, runcmd
 
 
-class LinodeProxy:
+class LinodeProxy(Proxy):
     user_made = False
 
     def __init__(
@@ -39,42 +40,45 @@ class LinodeProxy:
         debug: bool = False,
         exclusive: bool = True,
     ):
-        self.proxy_port = proxy_port
-        self.proxy_user = proxy_user
-        self.pubkey_path = pubkey_path
-        self.debug = debug
-        self.exclusive = exclusive
+        try:
+            self.proxy_port = proxy_port
+            self.proxy_user = proxy_user
+            self.pubkey_path = pubkey_path
+            self.debug = debug
+            self.exclusive = exclusive
 
-        self.proxy_url = "socks5://127.0.0.1:" + str(self.proxy_port)
+            self.proxy_url = "socks5://127.0.0.1:" + str(self.proxy_port)
 
-        self.ssh_prefix = (
-            'ssh -o "UserKnownHostsFile=/dev/null" '
-            + '-o "StrictHostKeyChecking=no" -i '
-            + splitext(self.pubkey_path)[0]
-            + " "
-        )
-        pubfile = open(self.pubkey_path, mode="r")
-        self.pubkey = pubfile.readline().rstrip()
-        pubfile.close()
+            self.ssh_prefix = (
+                'ssh -o "UserKnownHostsFile=/dev/null" '
+                + '-o "StrictHostKeyChecking=no" -i '
+                + splitext(self.pubkey_path)[0]
+                + " "
+            )
+            pubfile = open(self.pubkey_path, mode="r")
+            self.pubkey = pubfile.readline().rstrip()
+            pubfile.close()
 
-        self.passwd = runcmd(
-            "echo $(cat /dev/random | strings | head -c 512 | "
-            + "grep -oE '[a-zA-Z0-9#%!]') | sed 's/\s//g' | head -c 32;"
-        ).decode()
+            self.passwd = runcmd(
+                "echo $(cat /dev/random | strings | head -c 512 | "
+                + "grep -oE '[a-zA-Z0-9#%!]') | sed 's/\s//g' | head -c 32;"
+            ).decode()
 
-        create_cmd = (
-            "linode-cli --json linodes create "
-            + "--image linode/arch "
-            + "--authorized_keys "
-            + '"'
-            + self.pubkey
-            + '"'
-            + ' --root_pass "'
-            + self.passwd
-            + '"'
-        )
-        self.info = j.loads(runcmd(create_cmd).decode())[0]
-        print("[INFO]: Created Linode {}.".format(self.info["id"]))
+            create_cmd = (
+                "linode-cli --json linodes create "
+                + "--image linode/arch "
+                + "--authorized_keys "
+                + '"'
+                + self.pubkey
+                + '"'
+                + ' --root_pass "'
+                + self.passwd
+                + '"'
+            )
+            self.info = j.loads(runcmd(create_cmd).decode())[0]
+            print("[INFO]: Created Linode {}.".format(self.info["id"]))
+        except KeyboardInterrupt:
+            self.cleanup()
 
     def find_linode(self) -> bool:
         linodes = j.loads(runcmd("linode-cli --json linodes list").decode())
@@ -161,6 +165,8 @@ class LinodeProxy:
     def test_proxy(self) -> bool:
         sen = struct.pack("BBB", 0x05, 0x01, 0x00)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(2)
+
         try:
             s.connect(("127.0.0.1", self.proxy_port))
         except ConnectionRefusedError as e:
@@ -170,8 +176,18 @@ class LinodeProxy:
                 )
             )
             return False
-        s.sendall(sen)
-        data = s.recv(2)
+
+        for n in range(3):
+            s.sendall(sen)
+            try:
+                data = s.recv(2)
+                break
+            except socket.timeout:
+                if n == 2:
+                    eprint(
+                        "[ERROR]: Linode SOCKS timed out after three attempts!",
+                    )
+                    return False
 
         version, auth = struct.unpack("BB", data)
         if version == 5 and auth == 0:
