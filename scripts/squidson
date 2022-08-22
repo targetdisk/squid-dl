@@ -2,7 +2,7 @@
 import argparse
 import json as j
 from yt_dlp import YoutubeDL
-from yt_dlp.utils import encodeFilename, sanitize_path
+from yt_dlp.utils import encodeFilename, sanitize_filename
 
 """
 Dump yt_dlp's entire info_dict for a whole playlist in JSON format.
@@ -43,7 +43,7 @@ if __name__ == "__main__":
         y.extract_info(opts.playlist_url, download=False)
     )
 
-    dump_path = encodeFilename(sanitize_path(info_dict["title"] + ".json"))
+    dump_path = encodeFilename(sanitize_filename(info_dict["title"] + ".json"))
     print(
         '[INFO]: Writing JSON-ified playlist info_dict to "{}"'.format(
             dump_path
