@@ -438,12 +438,7 @@ def parse_args(args: list, name: str):
 
     return parser.parse_args(args=args)
 
-
-def main(args: [str], name: str) -> int:
-    opts = parse_args(args=args, name=name)
-    sub_langs = opts.subtitle_langs.split(",")
-    n_workers = opts.n_workers
-
+def check_keys():
     key_path = os.path.abspath("./proxy_key")
     pubkey_path = os.path.abspath(key_path + ".pub")
     if not (
@@ -452,6 +447,11 @@ def main(args: [str], name: str) -> int:
     ):
         print("[INFO]: Creating SSH key for Linode proxying...")
         print(runcmd('ssh-keygen -f "{}" -N ""'.format(key_path)).decode())
+
+def main(args: [str], name: str) -> int:
+    opts = parse_args(args=args, name=name)
+    sub_langs = opts.subtitle_langs.split(",")
+    n_workers = opts.n_workers
 
     info_dict = j.loads(opts.playlist_json.read())
     opts.playlist_json.close()
@@ -498,6 +498,7 @@ def main(args: [str], name: str) -> int:
             port = base_port + n
 
             if opts.linode_proxy:
+                check_keys()
                 linode_proxies.append(
                     LinodeProxy(proxy_port=port, pubkey_path=pubkey_path)
                 )
