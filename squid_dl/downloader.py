@@ -38,7 +38,7 @@ from random import randint
 from time import sleep
 import typing
 from yt_dlp import YoutubeDL
-from yt_dlp.utils import encodeFilename, sanitize_path
+from yt_dlp.utils import encodeFilename, sanitize_filename
 from yt_dlp.extractor.common import InfoExtractor as IE
 
 from .linode import LinodeProxy
@@ -233,7 +233,7 @@ def check_dl(in_q: Queue, out_q: Queue):
 
             y = YoutubeDL({"ignoreerrors": True})
             basename = os.path.splitext(
-                sanitize_path(encodeFilename(y.prepare_filename(entry)))
+                sanitize_filename(encodeFilename(y.prepare_filename(entry)))
             )[0]
             try:
                 if check_subs_done(entry, basename):
@@ -458,7 +458,7 @@ def main(args: [str], name: str) -> int:
 
     print("[INFO]: Starting squid-dl...")
 
-    dirname = info_dict["title"]
+    dirname = sanitize_filename(info_dict["title"])
     print('[INFO]: saving videos to "{}" directory'.format(dirname))
     if not (os.path.exists(dirname) and os.path.isdir(dirname)):
         os.mkdir(dirname)
