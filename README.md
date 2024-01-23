@@ -14,7 +14,8 @@
 
 `squid-dl` is a massively parallel
 [yt-dlp](https://github.com/yt-dlp/yt-dlp)-based YouTube downloader useful for
-downloading large video playlists a fast internet connection.
+downloading large video playlists.  The faster your internet connection, the
+more fun you can have!
 
 ## Installation
 Run the `setup.py`, which will install `squid-dl` and its two dependencies:
