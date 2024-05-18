@@ -24,6 +24,12 @@ Run the `setup.py`, which will install `squid-dl` and its two dependencies:
 $ python3 setup.py install
 ```
 
+If that fails, you may have to install `setuptools`.  You can get it by
+invoking:
+```
+$ python3 -m pip install setuptools
+```
+
 ### Linode Proxy Setup
 If you want to use the Linode SOCKS proxy feature, be sure to configure the
 `linode-cli` first:
